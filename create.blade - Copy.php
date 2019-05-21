@@ -126,7 +126,7 @@
       <div class="col-md-12">
          <div class="box">
          <div class="box-body">
-     <form method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data">
+		 <form method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data">
                                  {{csrf_field()}}
          @if(Session::has('success_msg'))
          <div class="alert alert-success">{{ Session::get('success_msg') }}</div>
@@ -499,23 +499,25 @@
                                 <div class="row"  ng-show="check{{ $menu_item->id}} == 'menu_{{ $menu_item->id}}'">
                                 
                                 <div class="col-md-7 offset-md-2">
-                                 <input type="text" id="txtPassportNumber" placeholder="add label" name="<?php echo '{{ getSubMenuLabel($index,'.$menu_item->id.') }}';?>" class="form-control form-control-sm" ng-disabled="disableOption_{{$menu_item->slug}}_<?php echo '{{$index}}';?> == true"/>
-                                 <?php foreach($menu_meta as $meta =>$meta_value){ $tier_indexid= '{{ tierName($index) }}'; var_dump($tier_indexid);
-
-                                 ?> 
+                                 <input type="text" id="txtPassportNumber" placeholder="add label" name="<?php echo '{{ getSubMenuLabel($index,'.$menu_item->id.') }}';?>" class="form-control form-control-sm"   ng-model="form.OtherProgram" ng-disabled="disableOption === true" ng-required="form.Program<?php echo '{{$index}}';?>{{$menu_item->id}} != menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][dial_number] "/>
+                                 <?php foreach($menu_meta as $meta =>$meta_value){ ?>
                                    <div class="form-check">
-                                    <label class="form-check-label">
+                                    
                                      @if($meta_value->slug=='dial_number')
-                                        <input type="radio"  value=dial_number  class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" ng-click="disableOption = true;delete(fieldGroup)" checked><?php echo $meta_value->name; ?>
+                                     <label class="form-check-label">
+                                        <input type="radio"  value="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][{{$meta_value->slug}}]"  class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>"  checked ng-model="form.Program01" ng-click="disableOption = false;delete(fieldGroup)" required><?php echo $meta_value->name; ?>
+                                         </label>
                                      @elseif($meta_value->slug=='split')
-                                          <input disabled="disabled" type="radio" value="split" class="form-check-input menu_meta_split split_radio_button" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" id="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][split]" data="<?php echo '{{$index}}';?>" ng-click="disableOption = true;clickEvent($event);" ><?php echo $meta_value->name; ?>
+                                        <label class="form-check-label">
+                                          <input disabled="disabled" type="radio" value="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][{{$meta_value->slug}}]" class="form-check-input menu_meta_split split_radio_button" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" id="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][split]" data="<?php echo '{{$index}}';?>" ng-click="clickEvent($event);" ><?php echo $meta_value->name; ?>
+                                           </label>
                                      @else
-                                     <?php $test='disableOption_'.$menu_item->slug.'_{{$index}} = true'; ?>
-                                     <input type="radio"  value="spanish" class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" ng-click="<?php echo $test ?>"><?php echo $meta_value->name; ?>
-                                          
+                                     <label class="form-check-label">
+                                     <input type="radio"  ng-model="form.Program0.1" ng-click="disableOption = true;delete(fieldGroup)"  required  value="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][{{$meta_value->slug}}]" class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>"  ><?php echo $meta_value->name; ?>
+                                           </label>
                                      @endif
                                      
-                                    </label>
+                                   
                                    </div>
                                  <?php } ?>
                                  
@@ -530,6 +532,7 @@
                               
                               <?php }
                               ?>    
+                       
                               </div>
                             </div>
                          </div>
@@ -544,7 +547,7 @@
             </div>
          </div>
       </div>
-    </form>
+	  </form>
    </div>
 </div>
  </div>
