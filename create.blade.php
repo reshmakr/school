@@ -1,132 +1,15 @@
 @extends('layouts.dashboard')
 @section('content')
-
  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular.min.js"></script>
-  <script type="text/javascript">
-        var app = angular.module('MyApp', [])
-        app.controller('MyController', function ($scope,$location,$anchorScroll) {
-            //This will hide the DIV by default.
-            // $scope.checkboxSelection = 1;
-            // $scope.isCheckboxSelected = function(data) {
-             // console.log(data);
-             // console.log($scope.checkboxSelection);
-              //   return data === $scope.checkboxSelection;
-             //};
-
-                // $scope.IsVisible = false;
-                // $scope.ShowHide = function () { 
-                //   console.log($scope.ShowPassport);
-                //     //If DIV is visible it will be hidden and vice versa.
-                //     $scope.IsVisible = $scope.ShowPassport;
-                // }
-                //  $scope.change = function () {
-                //     console.log($scope.newItemType)
-                //     $scope.IsVisible = $scope.ShowPassport;
-                // };
-
-           
-                $scope.fieldGroups = [{ }];
-
-                 $scope.getName = function ( $index) {
-                  return $scope.name + '_' + $index + '_tier';
-                }
-                  $scope.getMenuName = function ( $index,$menu_id) {
-                    //console.log($scope.name + '[' + $index + '][main_menu]['+$menu_id+']');
-                  return $scope.name + '[' + $index + '][main_menu]['+$menu_id+']';
-                }
-                  $scope.getSubMenuName = function ( $index,$menu_id) {
-                    //console.log( $scope.name + '[' + $index + '][sub_menu]['+$menu_id+']');
-                  return $scope.name + '[' + $index + '][sub_menu]['+$menu_id+']';
-                }
-                  $scope.getSubMenuLabel = function ( $index,$menu_id) {
-                   // console.log( $scope.name + '[' + $index + '][sub_menu_label]['+$menu_id+']');
-                  return $scope.name + '[' + $index + '][sub_menu_label]['+$menu_id+']';
-                }
-
-                $scope.clone = function(index_id) {
-                  $scope.fieldGroups.push({}); 
-                  $location.hash('repeat_'+(index_id+1));
-                  $anchorScroll();
-                    alert($(this));
-                    console.log($(this).attr());
-                }
-               $scope.clickEvent = function(obj) {
-                
-                  var el =$('.'+obj.target.attributes.class.value);
-                  el.attr('disabled', 'disabled'); 
-                 
-                  //console.log(obj.target.attributes.id.value);
-                  var idel =$('#'+obj.target.attributes.id.value);
-                  idel.removeAttr('disabled'); 
-                  $scope.fieldGroups.push({}); 
-                  var indexid=parseFloat(obj.target.attributes.data.value)+1;
-                  //console.log(indexid);
-
-                  var tiername='block_'+indexid+'_tier';
-                  $scope.tiername = obj.target.attributes.id.value;
-                  /*console.log(obj.target.attributes.id.value);
-                   $scope.tiername =obj.target.attributes.id.value; 
-                   console.log(tiername);
-                   console.log($scope.tiername);*/
-                  //focus
-                  $location.hash('repeat_'+(indexid));
-                  $anchorScroll();      
-              }
-              $scope.addAttr = function(dial_number_id,spanish_id) {
-                //console.log(dial_number_id);
-                //console.log(spanish_id);
-              }
-
-                $scope.delete = function(fieldGroup) { 
-                   var index = $scope.fieldGroups.indexOf(fieldGroup)+1;
-                   // console.log(index);
-                   // console.log($scope.fieldGroups.length);
-                     if($scope.fieldGroups.length!=index)
-                        $scope.fieldGroups.splice(index, 1);    
-
-                }
-                $scope.deleteTier = function(obj) {  
-                 // console.log('mainbutton close');
-                 // console.log(obj.target.attributes.data.value);
-                 // console.log("#repeat_"+parseFloat(obj.target.attributes.data.value+1));
-                 console.log(obj.target.checked);
-                  if(obj.target.checked==false){
-                    $( "#repeat_"+parseFloat(obj.target.attributes.data.value+1)).remove();
-                  } 
-                  var parentId=obj.target.parentNode.parentNode.parentNode.id;
-                  //console.log($('#'+parentId+' .form-check-input:first'));
-                  
-                  /*$('#'+parentId+' .form-check-input').each(function(){
-                    console.log($(this).attr('checked'));
-                    $(this).attr('checked',false);
-                });*/
-
-                  //:first
-                    /*var index = $scope.fieldGroups.indexOf(fieldGroup);
-                     if($scope.fieldGroups.length!=1)
-                        $scope.fieldGroups.splice(index, 1); */     
-                }
-                
-                $scope.tierName = function(id) {
-                     if(id==0){
-                        return 'Home';
-                       }
-                        return 'Tier '+id;
-                       
-                   };
-                     
-
-        });
-      
-
-    </script>
+<script src="{{ asset('dist/js/create.js') }}"></script>
+<script src="{{ asset('dist/js/create.min.js') }}"></script>    
 <link rel="stylesheet" href="https://rawgit.com/jonthornton/jquery-timepicker/master/jquery.timepicker.css">
 <div class="container">
    <div class="row profile">
       <div class="col-md-12">
          <div class="box">
          <div class="box-body">
-     <form method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data">
+		 <form method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data" id="company-form">
                                  {{csrf_field()}}
          @if(Session::has('success_msg'))
          <div class="alert alert-success">{{ Session::get('success_msg') }}</div>
@@ -143,6 +26,7 @@
             </ul>
          </div>
          @endif
+         <div id="error-msg"></div>
          <div class="panel panel-default">
             <div class="panel-heading">
                </br>
@@ -472,25 +356,34 @@
                                     <input type="text" name="contact_email" value="{{ old('contact_email') }}" class="form-control" id="inputAddress2" placeholder="Contact Email">
                                  </div>
                                  <button type="submit" class="btn btn-primary">Save</button>
-                              </form>
+                             
                            </div>
                            <div class="tab-pane fade" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
                              
                                <div ng-app="MyApp" >
-                        <div ng-controller="MyController" ng-init="name = 'block'">
+                        <div ng-controller="MyController" ng-init="name = 'block'" id="MyController">
                                  <div class=" menu_button-group">
                            <div class="row text-center flex-nowrap">
                             <div ng-repeat="fieldGroup in fieldGroups" class="col-sm-6 ng-scope" id="<?php echo 'repeat_{{$index}}';?>" ng-set-focus="<?php echo 'repeat_{{$index}}';?>" style="border-right: 2px solid #eee;
     margin-right: 10px;">
-
-                               <h3><?php echo '{{ tierName($index) }}';?></h3>
+                               <?php $hometiername= '{{ $index }}'; ?>
+                               <?php if($hometiername =='0'){ ?>
+                                  <h3> <?php echo '{{ tierName($index) }}'; ?></h3>
+                               <?php }else{ ?>
+                                    <h3 id="<?php echo 'h3_repeat_{{$index}}';?>">Home</h3>
+                                <?php } ?>
+                                
+                               <?php //echo $hometiername;?>
+                               <input type="hidden" name="<?php echo '{{ getTierLabel($index) }}';?>" id="<?php echo 'hidden_repeat_{{$index}}';?>" value="">
+                               <h5 id="<?php echo 'tierlabel_repeat_{{$index}}';?>"></h5>
+                               <br/>
                               <?php 
                               foreach($menu_keys as $menu_items=>$menu_item){ ?>
                               
                               <div id="<?php echo 'parent_{{$index}}';?>">
                                <div class="form-group row">
-                                <label class="switch  switch-flat control-label col-md-4" >
-                                  <input class="switch-input" type="checkbox" data-size="small"  ng-true-value="menu_{{ $menu_item->id }}" ng-false-value="on" ng-model="check{{ $menu_item->id}}" name=" <?php echo '{{ getMenuName($index,'.$menu_item->id.') }}';?>" ng-click="deleteTier($event)" ng-true-value="YES" ng-false-value="NO" data="<?php echo '{{$index}}';?>" value="{{ $menu_item->slug }}"/>
+                                <label class="switch control-label col-md-2" >
+                                  <input class="switch-input checkbox-button" type="checkbox" data-size="small" data-class="menu_{{ $menu_item->id }}" ng-true-value="menu_{{ $menu_item->id }}" ng-false-value="on" ng-model="check{{ $menu_item->id}}" name=" <?php echo '{{ getMenuName($index,'.$menu_item->id.') }}';?>"  ng-true-value="YES" ng-false-value="NO" data="<?php echo '{{$index}}';?>" value="{{ $menu_item->slug }}" data-id="<?php echo '{{$index}}';?>" btn-id="<?php echo '{{ getMenuId($index,'.$menu_item->id.') }}';?>" spanish-btn-id="<?php echo '{{ getMenuSpanishClass($index,'.$menu_item->id.') }}';?>"/>
                                   <span class="switch-label" data-on="On" data-off="Off"></span> <span class="switch-handle"></span> 
                                 </label>
                                 <label class="col-md-3">&nbsp;&nbsp; <?php echo $menu_item->name;?></label>
@@ -499,25 +392,31 @@
                                 <div class="row"  ng-show="check{{ $menu_item->id}} == 'menu_{{ $menu_item->id}}'">
                                 
                                 <div class="col-md-7 offset-md-2">
-                                 <input type="text" id="txtPassportNumber" placeholder="add label" name="<?php echo '{{ getSubMenuLabel($index,'.$menu_item->id.') }}';?>" class="form-control form-control-sm" ng-disabled="disableOption_{{$menu_item->slug}}_<?php echo '{{$index}}';?> == true"/>
-                                 <?php foreach($menu_meta as $meta =>$meta_value){ $tier_indexid= '{{ tierName($index) }}'; var_dump($tier_indexid);
-
-                                 ?> 
+                                
+                                  <?php if($menu_item->slug=='time_delayed_action'){ ?>
+                                     <input type="text" data-id="<?php echo '{{$index}}';?>"  placeholder="# of seconds to delay" name="<?php echo '{{ getSubMenuLabel($index,'.$menu_item->id.') }}';?>" class="form-control form-control-sm menu_{{ $menu_item->id }}"  ng-disabled="menumeta.value == 'menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][spanish]'" btn-id="<?php echo '{{ getMenuId($index,'.$menu_item->id.') }}';?>"/>
+                                    <div class="form-check">
+                                       <label class="form-check-label">
+                                          <input  type="radio" value="split" class="form-check-input menu_meta_split split_radio_button rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" id="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][split]" data="<?php echo '{{$index}}';?>"  databutton="{{$menu_item->name}}" ng-click="clickEvent($event);"  >Split
+                                       </label>
+                                     </div>
+                                  <?php }else{?>
+                                     <input type="text" data-id="<?php echo '{{$index}}';?>" placeholder="add label" name="<?php echo '{{ getSubMenuLabel($index,'.$menu_item->id.') }}';?>" class="form-control form-control-sm menu_{{ $menu_item->id }}"  ng-disabled="menumeta.value == 'menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][spanish]'"  btn-id="<?php echo '{{ getMenuId($index,'.$menu_item->id.') }}';?>"/>
+                                 <?php foreach($menu_meta as $meta =>$meta_value){ ?>
                                    <div class="form-check">
                                     <label class="form-check-label">
                                      @if($meta_value->slug=='dial_number')
-                                        <input type="radio"  value=dial_number  class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" ng-click="disableOption = true;delete(fieldGroup)" checked><?php echo $meta_value->name; ?>
+                                        <input type="radio"  value="dial_number"  class="form-check-input rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>"  checked><?php echo $meta_value->name; ?>
                                      @elseif($meta_value->slug=='split')
-                                          <input disabled="disabled" type="radio" value="split" class="form-check-input menu_meta_split split_radio_button" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" id="menu_meta[<?php echo '{{$index}}';?>][{{$menu_item->id}}][split]" data="<?php echo '{{$index}}';?>" ng-click="disableOption = true;clickEvent($event);" ><?php echo $meta_value->name; ?>
+                                          <input  type="radio" value="split" class="form-check-input menu_meta_split split_radio_button rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" id="block_<?php echo '{{$index}}';?>_{{$menu_item->id}}" data="<?php echo '{{$index}}';?>" databutton="{{$menu_item->name}}" ng-click="clickEvent($event);" ><?php echo $meta_value->name; ?>
                                      @else
-                                     <?php $test='disableOption_'.$menu_item->slug.'_{{$index}} = true'; ?>
-                                     <input type="radio"  value="spanish" class="form-check-input" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>" ng-click="<?php echo $test ?>"><?php echo $meta_value->name; ?>
+                                     <input type="radio" id="<?php echo '{{ getMenuSpanishClass($index,'.$menu_item->id.') }}';?>" value="spanish" class="form-check-input rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName($index,'.$menu_item->id.') }}';?>"><?php echo $meta_value->name; ?>
                                           
                                      @endif
                                      
                                     </label>
                                    </div>
-                                 <?php } ?>
+                                 <?php } } ?>
                                  
                                   <br>
                                 </div>
@@ -544,7 +443,7 @@
             </div>
          </div>
       </div>
-    </form>
+	  </form>
    </div>
 </div>
  </div>
