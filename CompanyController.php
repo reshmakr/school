@@ -1,10 +1,12 @@
 <?php
 namespace App\Http\Controllers;
+
 use App\Company;
 use App\CompanyPhoneNumbers;
 use App\MenuMeta;
 use App\MenuKeys;
 use App\ActivityLog;
+use App\DialLog;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -35,10 +37,10 @@ class CompanyController extends Controller
         $title='Home';
         $filter_company=Input::get('filter_name');
         if(isset($filter_company)){
-            $companies = Company::where('name', $filter_company)->orWhere('name', 'like', '%' . $filter_company . '%')->orWhere('phone_numbers', 'like', '%' . $filter_company . '%')->paginate(10);
+            $companies = Company::where('name', $filter_company)->orWhere('name', 'like', '%' . $filter_company . '%')->orWhere('phone_numbers', 'like', '%' . $filter_company . '%')->paginate(50);
         
         }else{
-            $companies = Company::where('status', 1)->paginate(10);
+            $companies = Company::where('status', 1)->paginate(50);
         }
         
        
@@ -55,9 +57,10 @@ class CompanyController extends Controller
          
          $menu_meta = MenuMeta::all();
          $menu_keys = MenuKeys::all();
-         $title='Add Company';
+         $title='Add New Business Profile';
         return view('company.create',compact('menu_meta','menu_keys','title'));
     }
+    
     /**
      * Store a newly created resource in storage.
      *
@@ -65,8 +68,8 @@ class CompanyController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
-    { 
-      //echo '<pre>';print_r($request->block);die();
+    { ini_set('max_input_vars','3000' );
+     //echo '<pre>';print_r($request->block);die();
       $tier_count=count($request->block)-1;
         $menu_details=array();
         if(isset($request->block[0]['main_menu']))
@@ -79,7 +82,6 @@ class CompanyController extends Controller
               
                     $menu_details=MenuKeys::find($menu_key);
                     $i=$menu_details->id;
-                    $main_menu_details[$i]['tier_relation']=0;
                     $main_menu_details[$i]['id']=$menu_details->id;
                     $main_menu_details[$i]['name']=$menu_details->name;
                     $main_menu_details[$i]['slug']=$menu_details->slug;
@@ -90,181 +92,172 @@ class CompanyController extends Controller
                         $tier_val['sub_menu'][$menu_key]=$main_menu_details[$i]['submenu_slug']='split';
                     }
                     
-                    $main_menu_details[$i]['submenu']['slug']=$tier_val['sub_menu'][$menu_key];
                     if($tier_val['sub_menu'][$menu_key]=='dial_number'){
                         $main_menu_details[$i]['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['id']=1;
                         
                     }elseif($tier_val['sub_menu'][$menu_key]=='spanish'){
                         $main_menu_details[$i]['submenu_label']='N/A';
-                        $main_menu_details[$i]['submenu']['label']='N/A';
-                        $main_menu_details[$i]['submenu']['id']=3;
                     }else{
-                        $main_menu_details[$i]['submenu']['id']=2;
                         $main_menu_details[$i]['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['label']=$tier_val['sub_menu_label'][$menu_key];
-                       //var_dump($i);echo '<pre>';print_r($menu_key);die();
                         
-                        if($tier_val['tier_child'][$menu_key]){
-                           // $main_menu_details[$i]['tier_child'][$menu_key]['tier_id']=$tier_val['tier_child'][$i];
+                        if($tier_val['tier_child'][$menu_key] && $request->block[$tier_val['tier_child'][$menu_key]]){
                              $child_details=$request->block[$tier_val['tier_child'][$menu_key]];
-                            // echo '<pre>';print_r($child_details);die();
-                            // echo '<pre>';print_r($child_details);die();
-                             //start
+                             //first start
                              $x=0;
+							// echo '<pre>'; print_r($child_details);die();
+							 if(isset($child_details['main_menu'])){
                              foreach($child_details['main_menu'] as $child_menu_key=>$menu_val){
-                                   // echo '<pre>';print_r($child_menu_key);die();
                                     $menu_child_details=MenuKeys::find($child_menu_key);
                                     $j=$menu_child_details->id;
-                                    //$j=0;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['tier_relation']=0;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['id']=$menu_child_details->id;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['name']=$menu_child_details->name;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['slug']=$menu_child_details->slug;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['button_number']=$menu_child_details->button_number;
+									//print_r($j);
+									//var_dump($child_details['sub_menu_label'][$j]);
+									//die();
+                                    $main_menu_details[$i]['list'][$x]['name']=$menu_child_details->name;
+                                    $main_menu_details[$i]['list'][$x]['slug']=$menu_child_details->slug;
+                                    $main_menu_details[$i]['list'][$x]['button_number']=$menu_child_details->button_number;
+									if(!isset($child_details['sub_menu_label'][$j])){
+										return response()->json(['errors'=>'Error Occured please try again later!']);
+										\Session::flash('error_msg', 'Error Occured please try again later!');
+										return redirect('/home');
+									}
+										
+									$main_menu_details[$i]['list'][$x]['label']=$child_details['sub_menu_label'][$j];
+                                      
                                     if(isset($child_details['sub_menu'][$j])){
-                                       $main_menu_details[$i]['submenu']['split'][$x]['submenu_slug']=$child_details['sub_menu'][$j];
+                                       $main_menu_details[$i]['list'][$x]['submenu_slug']=$child_details['sub_menu'][$j];
                                     }else{ 
                                         $child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
                                     }
                                     
-                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu']['slug']=$child_details['sub_menu'][$j];
+                                    $main_menu_details[$i]['list'][$x]['slug']=$child_details['sub_menu'][$j];
                                     if($child_details['sub_menu'][$j]=='dial_number'){
-                                        $main_menu_details[$i]['submenu']['split'][$x]['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=1;
+                                        $main_menu_details[$i]['list'][$x]['label']=$child_details['sub_menu_label'][$j];
                                         
                                     }elseif($child_details['sub_menu'][$j]=='spanish'){
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu_label']='N/A';
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']='N/A';
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=3;
+                                        $main_menu_details[$i]['list'][$x]['submenu_label']='N/A';
                                     }else{ 
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=2;
-                                         $main_menu_details[$i]['submenu']['split'][$x]['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']=$child_details['sub_menu_label'][$child_menu_key];
-                                        //second tier start
-                                        $second_tier=array_filter($child_details['tier_child']); 
-                                        //echo '<pre>';print_r($second_tier);die();
-                                            if($second_tier[$child_menu_key]){
-                                           // $main_menu_details[$i]['tier_child'][$menu_key]['tier_id']=$tier_val['tier_child'][$i];
-                                             $second_child_details=$request->block[$second_tier[$child_menu_key]];
-                                            // echo '<pre>';print_r($second_tier[$child_menu_key]);die();
-                                            // echo '<pre>';print_r($second_child_details);die();
-                                             //start
-                                             $y=0;
-                                             foreach($second_child_details['main_menu'] as $second_child_menu_key=>$second_menu_val){
-                                                  // echo '<pre>';print_r($second_child_details);//die(); 
-                                                   //var_dump($second_child_menu_key);
-                                                    $second_menu_child_details=MenuKeys::find($second_child_menu_key);
-                                                    $z=$second_menu_child_details->id;
-                                                    // echo '<pre>';print_r($second_child_details);//die(); 
-                                                    //$j=0;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['tier_relation']=0;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['id']=$second_menu_child_details->id;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['name']=$second_menu_child_details->name;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['slug']=$second_menu_child_details->slug;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['button_number']=$second_menu_child_details->button_number;
-                                                    if(isset($second_child_details['sub_menu'][$second_child_menu_key])){
-                                                       $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu_slug']=$second_child_details['sub_menu'][$second_child_menu_key];
-                                                    }else{ 
-                                                        $second_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
-                                                    }
-                                                    var_dump($second_child_details['sub_menu_label'][$second_child_menu_key]);die();
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['slug']=$second_child_details['sub_menu'][$j];
-                                                    if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['id']=1;
-                                                        
-                                                    }elseif($second_child_details['sub_menu'][$second_child_menu_key]=='spanish'){
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu_label']='N/A';
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['label']='N/A';
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['id']=3;
-                                                    }else{ 
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['submenu']['id']=2;
-                                                         $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['submenu']['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        //third tier start
-															
-																$third_tier=array_filter($second_child_details['tier_child']); 
-																//echo '<pre>';print_r($second_tier);die();
-																	if($third_tier[$second_child_menu_key]){
-																   // $main_menu_details[$i]['tier_child'][$menu_key]['tier_id']=$tier_val['tier_child'][$i];
-																	 $third_child_details=$request->block[$third_tier[$second_child_menu_key]];
-																	// echo '<pre>';print_r($second_tier[$child_menu_key]);die();
-																	// echo '<pre>';print_r($second_child_details);die();
-																	 //start
-																	 $p=0;
-																	 foreach($third_child_details['main_menu'] as $third_child_menu_key=>$third_menu_val){
-																		  // echo '<pre>';print_r($second_child_details);//die(); 
-																		   //var_dump($second_child_menu_key);
-																			$third_menu_child_details=MenuKeys::find($third_child_menu_key);
-																			$q=$third_menu_child_details->id;
-																			// echo '<pre>';print_r($second_child_details);//die(); 
-																			//$j=0;
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['tier_relation']=0;
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['id']=$third_menu_child_details->id;
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['name']=$third_menu_child_details->name;
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['slug']=$third_menu_child_details->slug;
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['button_number']=$third_menu_child_details->button_number;
-																			if(isset($third_child_details['sub_menu'][$third_child_menu_key])){
-																			   $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu_slug']=$third_child_details['sub_menu'][$third_child_menu_key];
-																			}else{ 
-																				$third_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
-																			}
-																			
-																			$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu']['slug']=$third_child_details['sub_menu'][$j];
-																			if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu']['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['id']=1;
-																				
-																			}elseif($third_child_details['sub_menu'][$third_child_menu_key]=='spanish'){
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu_label']='N/A';
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu']['label']='N/A';
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['submenu']['id']=3;
-																			}else{ 
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['split']['submenu']['id']=2;
-																				 $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['split']['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
-																				$main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split'][$p]['split']['submenu']['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
-																				
-																				
-																				
-																			   
-																				
-																			}
-																		 $p=$p+1;
-																		} 
+									 $main_menu_details[$i]['list'][$x]['label']=$child_details['sub_menu_label'][$j];
+                                     
+									//second tier start
+										$second_tier=array_filter($child_details['tier_child']); 
+										if($second_tier[$child_menu_key]){
+											$second_child_details=$request->block[$second_tier[$child_menu_key]];
+											$y=0;
+											if(isset($second_child_details['main_menu'])){
+											foreach($second_child_details['main_menu'] as $second_child_menu_key=>$second_menu_val){
+											  
+												$second_menu_child_details=MenuKeys::find($second_child_menu_key);
+												$z=$second_menu_child_details->id;
+												
+												$main_menu_details[$i]['list'][$x]['list'][$y]['name']=$second_menu_child_details->name;
+												$main_menu_details[$i]['list'][$x]['list'][$y]['slug']=$second_menu_child_details->slug;
+												$main_menu_details[$i]['list'][$x]['list'][$y]['button_number']=$second_menu_child_details->button_number;
+												if(isset($second_child_details['sub_menu'][$second_child_menu_key])){
+												   $main_menu_details[$i]['list'][$x]['list'][$y]['submenu_slug']=$second_child_details['sub_menu'][$second_child_menu_key];
+												}else{ 
+													$second_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+												}
+												
+												if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
+													
+												}elseif($second_child_details['sub_menu'][$second_child_menu_key]=='spanish'){
+													$main_menu_details[$i]['list'][$x]['list'][$y]['submenu_label']='N/A';
+												}else{ 
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$child_menu_key];
+													//third tier start													
+														$third_tier=array_filter($second_child_details['tier_child']); 
+															if(isset($third_tier[$second_child_menu_key] )){
+															 $third_child_details=$request->block[$third_tier[$second_child_menu_key]];
+															 $p=0;
+															 if(isset($third_child_details['main_menu'])){
+															 foreach($third_child_details['main_menu'] as $third_child_menu_key=>$third_menu_val){
+
+																	$third_menu_child_details=MenuKeys::find($third_child_menu_key);
+																	$q=$third_menu_child_details->id;
 																	
-																}
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['tier_relation']=0;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['id']=$third_menu_child_details->id;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['name']=$third_menu_child_details->name;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['slug']=$third_menu_child_details->slug;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['button_number']=$third_menu_child_details->button_number;
+																	if(isset($third_child_details['sub_menu'][$third_child_menu_key])){
+																	   $main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['submenu_slug']=$third_child_details['sub_menu'][$third_child_menu_key];
+																	}else{ 
+																		$third_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+																	}
+																	
+																	
+																	if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
+																		
+																	}elseif($third_child_details['sub_menu'][$third_child_menu_key]=='spanish'){
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['submenu_label']='N/A';
+																	}else{ 
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
+																		//fouth child start
+																				
+																			$fourth_tier=array_filter($third_child_details['tier_child']); 
+																				if(isset($fourth_tier[$third_child_menu_key] )){
+																				 $fourth_child_details=$request->block[$fourth_tier[$third_child_menu_key]];
+																				 $r=0;
+																				 if(isset($fourth_child_details['main_menu'])){
+																				 foreach($fourth_child_details['main_menu'] as $fourth_child_menu_key=>$foutyh_menu_val){
+
+																						$fourth_menu_child_details=MenuKeys::find($fourth_child_menu_key);
+																						$q=$fourth_menu_child_details->id;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['name']=$fourth_menu_child_details->name;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['slug']=$fourth_menu_child_details->slug;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['button_number']=$fourth_menu_child_details->button_number;
+																						if(isset($fourth_child_details['sub_menu'][$fourth_child_menu_key])){
+																						   $main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['submenu_slug']=$fourth_child_details['sub_menu'][$fourth_child_menu_key];
+																						}else{ 
+																							$fourth_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+																						}
+																						
+																						
+																						if($third_child_details['sub_menu'][$third_child_menu_key]=='dial_number'){
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['label']=$fourth_child_details['sub_menu_label'][$fourth_child_menu_key];
+																							
+																						}elseif($fourth_child_details['sub_menu'][$fourth_child_menu_key]=='spanish'){
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['submenu_label']='N/A';
+																						}else{ 
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['label']=$fourth_child_details['sub_menu_label'][$fourth_child_menu_key];
+																						
+																							
+																						}
+																					 $r=$r+1;
+																					} 
+																				}
+																			}												
+																		//fourth child end
+																		
+																	}
+																 $p=$p+1;
+																} 
+															}
+														}
+
 														//third tier end
-                                                        
-                                                        
-                                                       
-                                                        
-                                                    }
-                                                 $y=$y+1;
-                                                } 
-                                            
-                                        }
-                                        //second tier end
+													  
+												}
+											 $y=$y+1;
+											} 
+										}
+										}
+
+									//second tier end
                                         
-                                        
-                                       
-                                        
-                                    }//echo '<pre>';print_r($main_menu_details);die();
+                                    }
                                  $x=$x+1;
-                                } //echo '<pre>';print_r($main_menu_details);die();
+						} }
                              //end
-                        }//die();
-                        //echo '<pre>';print_r($main_menu_details);die();
+                        }
                     
-                        
                        
-                        
                     }
-                 //die();
+                 
                 }
                 
             }else{
@@ -281,7 +274,9 @@ class CompanyController extends Controller
         }else{
             $menu_json='';
             $menu_array_json='';
+            return response()->json(['errors'=>'Error Occured please try again later!']);
              \Session::flash('error_msg', 'Error Occured please try again later!');
+			 return redirect('/home');
              return redirect()->back()->withInput();
         }
             
@@ -289,43 +284,37 @@ class CompanyController extends Controller
         $menu_json='';
         $menu_array_json='';
      }
-     //echo '<pre>';print_r($main_menu_details[$i]['submenu']['split'][$j]);
-       //echo '<pre>';print_r($main_menu_details);die();
-       echo '<pre>';print_r($menu_json);die();
+
          $this->validate($request, [
             'name' => Rule::unique('companies')->where(function ($query) {
                      $query->where('status', 1);
                      })
         ]);
+          //echo '<pre>';print_r($request->all());die();
          $validator = Validator::make($request->all(), [
-            'name' => 'required|max:200|regex:/^[\pL\s\-]+$/u|unique:companies',
-            'company_phone_numbers' => 'required|min:1|numericarray',
-            'website' => 'sometimes|nullable|regex:/^http:\/\/\w+(\.\w+)*(:[0-9]+)?\/?$/',
-            'company_address1'=>'sometimes|nullable|alpha_dash',
-            'company_address2'=>'sometimes|nullable|alpha_dash',
-            'state'=>'sometimes|nullable|alpha_dash',
-            'city'=>'sometimes|nullable|alpha_dash',
-            'zipcode'=>'sometimes|nullable|alpha_dash',
+            'name' => 'required|max:200|unique:companies',
+            'company_phone_numbers' => 'required|min:1|numericarray|numericphonearray',
+            'website' => 'sometimes|nullable|validwebsite',
             'company_logo'=>'sometimes|nullable|image|mimes:jpg,jpeg,png|max:500000',
-            'monday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'monday.from_time'=>'required_with:monday_checked|sometimes|nullable|date_format:H:i',
             'monday.to_time'=>'required_with:monday.from_time|sometimes|nullable|date_format:H:i',
-            'tuesday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'tuesday.from_time'=>'required_with:tuesday_checked|sometimes|nullable|date_format:H:i',
             'tuesday.to_time'=>'required_with:tuesday.from_time|sometimes|nullable|date_format:H:i',
-            'wednesday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'wednesday.from_time'=>'required_with:wednesday_checked|sometimes|nullable|date_format:H:i',
             'wednesday.to_time'=>'required_with:wednesday.from_time|sometimes|nullable|date_format:H:i',
-            'thursday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'thursday.from_time'=>'required_with:thursday_checked|sometimes|nullable|date_format:H:i',
             'thursday.to_time'=>'required_with:thursday.from_time|sometimes|nullable|date_format:H:i',
-            'friday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'friday.from_time'=>'required_with:friday_checked|sometimes|nullable|date_format:H:i',
             'friday.to_time'=>'required_with:friday.from_time|sometimes|nullable|date_format:H:i',
-            'saturday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'saturday.from_time'=>'required_with:saturday_checked|sometimes|nullable|date_format:H:i',
             'saturday.to_time'=>'required_with:saturday.from_time|sometimes|nullable|date_format:H:i',
-            'sunday.from_time'=>'sometimes|nullable|date_format:H:i',
+            'sunday.from_time'=>'required_with:sunday_checked|sometimes|nullable|date_format:H:i',
             'sunday.to_time'=>'required_with:sunday.from_time|sometimes|nullable|date_format:H:i',
-            'facebook_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'twitter_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'instagram_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'yelp_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'pinterest_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
+            'facebook_url' => 'sometimes|nullable|validwebsite',
+            'twitter_url' => 'sometimes|nullable|validwebsite',
+            'instagram_url' => 'sometimes|nullable|validwebsite',
+            'yelp_url' => 'sometimes|nullable|validwebsite',
+            'pinterest_url' => 'sometimes|nullable|validwebsite',
             'contact_name' => 'sometimes|nullable||regex:/^[\pL\s\-]+$/u',
             'contact_phone' => 'sometimes|nullable||numeric|digits_between:10,10',
             'contact_email' => 'sometimes|nullable||email',
@@ -333,7 +322,13 @@ class CompanyController extends Controller
             'company_name.required' => "Company Name is required",
             'company_phone_numbers' => 'Company Phone Number is required',
         ]);
+
+         
+           //echo '<pre>';
+          // print_r($validator->errors()->all());die();
+
         if ($validator->fails()) {
+            return response()->json(['errors'=>$validator->errors()->all()]);
            // \Session::flash('error_msg', 'Please fill required fields');
             return redirect()->back()->withErrors($validator->errors())->withInput();
         } else {
@@ -412,7 +407,9 @@ class CompanyController extends Controller
                 }   
             }
             //end save phone numbers
-             
+             \Session::flash('success_msg', 'Business Profile is successfully added!');
+			 
+             return response()->json(['success'=>'Business Profile is successfully added']);
                 \Session::flash('success_msg', 'Company Added successfully!');
              }else{
                  \Session::flash('error_msg', 'Error Occured please try again later!');
@@ -433,7 +430,7 @@ class CompanyController extends Controller
      */
     public function show($id)
     {
-        $title='Company Profile';
+       
         $company = \App\Company::find($id);
         if(!isset($company->thumb)){
             $company->thumb=config('app.url').'images/no-logo.png';
@@ -442,9 +439,11 @@ class CompanyController extends Controller
         $company->company_social_urls=json_decode($company->social_urls,true);
         $company->company_working_hours=json_decode($company->working_hours,true);
         $company->company_phone_numbers=explode(",",$company->phone_numbers);
+        $title=$company->name;
         $menu_meta = MenuMeta::all();
         $menu_keys = MenuKeys::all();
-        return view('company.show',compact('company','menu_meta','menu_keys','title'));
+        $company_phone_numbers = CompanyPhoneNumbers::where('status', 1)->where('company_id', $id)->paginate(10);
+        return view('company.show',compact('company','menu_meta','menu_keys','title','company_phone_numbers'));
     }
     /**
      * Show the form for editing the specified resource.
@@ -454,8 +453,9 @@ class CompanyController extends Controller
      */
     public function edit($id)
     {
-        $title='Edit Company Profile';
+        
         $company = \App\Company::find($id);
+        $title='Update '.$company->name;
         $company->company_social_urls=json_decode($company->social_urls,true);
         $company->company_working_hours=json_decode($company->working_hours,true);
        // $company->company_phone_numbers=explode(",",$company->phone_numbers);
@@ -473,7 +473,8 @@ class CompanyController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request){
-          //echo '<pre>';print_r($request->block);die();
+         
+           
       $tier_count=count($request->block)-1;
         $menu_details=array();
         if(isset($request->block[0]['main_menu']))
@@ -486,7 +487,6 @@ class CompanyController extends Controller
               
                     $menu_details=MenuKeys::find($menu_key);
                     $i=$menu_details->id;
-                    $main_menu_details[$i]['tier_relation']=0;
                     $main_menu_details[$i]['id']=$menu_details->id;
                     $main_menu_details[$i]['name']=$menu_details->name;
                     $main_menu_details[$i]['slug']=$menu_details->slug;
@@ -497,128 +497,174 @@ class CompanyController extends Controller
                         $tier_val['sub_menu'][$menu_key]=$main_menu_details[$i]['submenu_slug']='split';
                     }
                     
-                    $main_menu_details[$i]['submenu']['slug']=$tier_val['sub_menu'][$menu_key];
                     if($tier_val['sub_menu'][$menu_key]=='dial_number'){
                         $main_menu_details[$i]['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['id']=1;
                         
                     }elseif($tier_val['sub_menu'][$menu_key]=='spanish'){
                         $main_menu_details[$i]['submenu_label']='N/A';
-                        $main_menu_details[$i]['submenu']['label']='N/A';
-                        $main_menu_details[$i]['submenu']['id']=3;
                     }else{
-                        $main_menu_details[$i]['submenu']['id']=2;
                         $main_menu_details[$i]['label']=$tier_val['sub_menu_label'][$menu_key];
-                        $main_menu_details[$i]['submenu']['label']=$tier_val['sub_menu_label'][$menu_key];
-                       //var_dump($i);echo '<pre>';print_r($menu_key);die();
-                        
-                        if($tier_val['tier_child'][$menu_key]){
-                           // $main_menu_details[$i]['tier_child'][$menu_key]['tier_id']=$tier_val['tier_child'][$i];
+                        //
+                        if($tier_val['tier_child'][$menu_key] && isset($request->block[$tier_val['tier_child'][$menu_key]])){
                              $child_details=$request->block[$tier_val['tier_child'][$menu_key]];
-                            // echo '<pre>';print_r($child_details);die();
-                            // echo '<pre>';print_r($child_details);die();
-                             //start
+                             //first start
                              $x=0;
+							 if(isset($child_details['main_menu'])){
                              foreach($child_details['main_menu'] as $child_menu_key=>$menu_val){
-                                   // echo '<pre>';print_r($child_menu_key);die();
                                     $menu_child_details=MenuKeys::find($child_menu_key);
                                     $j=$menu_child_details->id;
-                                    //$j=0;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['tier_relation']=0;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['id']=$menu_child_details->id;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['name']=$menu_child_details->name;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['slug']=$menu_child_details->slug;
-                                    $main_menu_details[$i]['submenu']['split'][$x]['button_number']=$menu_child_details->button_number;
+                                    $main_menu_details[$i]['list'][$x]['name']=$menu_child_details->name;
+                                    $main_menu_details[$i]['list'][$x]['slug']=$menu_child_details->slug;
+                                    $main_menu_details[$i]['list'][$x]['button_number']=$menu_child_details->button_number;
+									
+									
+						$main_menu_details[$i]['list'][$x]['label']=isset($child_details['sub_menu_label'][$j])?$child_details['sub_menu_label'][$j]:'';
+                                      
                                     if(isset($child_details['sub_menu'][$j])){
-                                       $main_menu_details[$i]['submenu']['split'][$x]['submenu_slug']=$child_details['sub_menu'][$j];
+                                       $main_menu_details[$i]['list'][$x]['submenu_slug']=$child_details['sub_menu'][$j];
                                     }else{ 
                                         $child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
                                     }
                                     
-                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu']['slug']=$child_details['sub_menu'][$j];
-                                    if($child_details['sub_menu'][$j]=='dial_number'){
-                                        $main_menu_details[$i]['submenu']['split'][$x]['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=1;
+                                    $main_menu_details[$i]['list'][$x]['slug']=$child_details['sub_menu'][$j];
+
+									if($child_details['sub_menu'][$j]=='dial_number'){ 
+									
+                                        $main_menu_details[$i]['list'][$x]['label']=$child_details['sub_menu_label'][$j];
                                         
                                     }elseif($child_details['sub_menu'][$j]=='spanish'){
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu_label']='N/A';
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']='N/A';
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=3;
+                                        $main_menu_details[$i]['list'][$x]['submenu_label']='N/A';
                                     }else{ 
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['id']=2;
-                                         $main_menu_details[$i]['submenu']['split'][$x]['label']=$child_details['sub_menu_label'][$j];
-                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu']['label']=$child_details['sub_menu_label'][$child_menu_key];
-                                        //second tier start
-                                        $second_tier=array_filter($child_details['tier_child']); 
-                                        //echo '<pre>';print_r($second_tier);die();
-                                            if($second_tier[$child_menu_key]){
-                                           // $main_menu_details[$i]['tier_child'][$menu_key]['tier_id']=$tier_val['tier_child'][$i];
-                                             $second_child_details=$request->block[$second_tier[$child_menu_key]];
-                                            // echo '<pre>';print_r($second_tier[$child_menu_key]);die();
-                                            // echo '<pre>';print_r($second_child_details);die();
-                                             //start
-                                             $y=0;
-                                             foreach($second_child_details['main_menu'] as $second_child_menu_key=>$second_menu_val){
-                                                  // echo '<pre>';print_r($second_child_details);//die(); 
-                                                   //var_dump($second_child_menu_key);
-                                                    $second_menu_child_details=MenuKeys::find($second_child_menu_key);
-                                                    $z=$second_menu_child_details->id;
-                                                    // echo '<pre>';print_r($second_child_details);//die(); 
-                                                    //$j=0;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['tier_relation']=0;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['id']=$second_menu_child_details->id;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['name']=$second_menu_child_details->name;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['slug']=$second_menu_child_details->slug;
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['button_number']=$second_menu_child_details->button_number;
-                                                    if(isset($second_child_details['sub_menu'][$second_child_menu_key])){
-                                                       $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu_slug']=$second_child_details['sub_menu'][$second_child_menu_key];
-                                                    }else{ 
-                                                        $second_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
-                                                    }
-                                                    
-                                                    $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['slug']=$second_child_details['sub_menu'][$j];
-                                                    if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['id']=1;
-                                                        
-                                                    }elseif($second_child_details['sub_menu'][$second_child_menu_key]=='spanish'){
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu_label']='N/A';
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['label']='N/A';
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['submenu']['id']=3;
-                                                    }else{ 
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['submenu']['id']=2;
-                                                         $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
-                                                        $main_menu_details[$i]['submenu']['split'][$x]['submenu'][$y]['split']['submenu']['label']=$second_child_details['sub_menu_label'][$child_menu_key];
-                                                        
-                                                        
-                                                        
-                                                       
-                                                        
-                                                    }
-                                                 $y=$y+1;
-                                                } 
-                                            
-                                        }
-                                        //second tier end
+									 $main_menu_details[$i]['list'][$x]['label']=isset($child_details['sub_menu_label'][$j])?$child_details['sub_menu_label'][$j]:'';
+                                     
+									//second tier start
+										$second_tier=array_filter($child_details['tier_child']); 
+										if(isset($second_tier[$child_menu_key])){
+											$second_child_details=$request->block[$second_tier[$child_menu_key]];
+											$y=0;
+											if(isset($second_child_details['main_menu'])){
+											foreach($second_child_details['main_menu'] as $second_child_menu_key=>$second_menu_val){
+											  
+												$second_menu_child_details=MenuKeys::find($second_child_menu_key);
+												$z=$second_menu_child_details->id;
+												
+												$main_menu_details[$i]['list'][$x]['list'][$y]['name']=$second_menu_child_details->name;
+												$main_menu_details[$i]['list'][$x]['list'][$y]['slug']=$second_menu_child_details->slug;
+												$main_menu_details[$i]['list'][$x]['list'][$y]['button_number']=$second_menu_child_details->button_number;
+												if(isset($second_child_details['sub_menu'][$second_child_menu_key])){
+												   $main_menu_details[$i]['list'][$x]['list'][$y]['submenu_slug']=$second_child_details['sub_menu'][$second_child_menu_key];
+												}else{ 
+													$second_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+												}
+												
+												if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
+													
+												}elseif($second_child_details['sub_menu'][$second_child_menu_key]=='spanish'){
+													$main_menu_details[$i]['list'][$x]['list'][$y]['submenu_label']='N/A';
+												}else{ 
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$second_child_menu_key];
+													$main_menu_details[$i]['list'][$x]['list'][$y]['label']=$second_child_details['sub_menu_label'][$child_menu_key];
+													//third tier start													
+														$third_tier=array_filter($second_child_details['tier_child']); 
+															if(isset($third_tier[$second_child_menu_key] )){
+															 $third_child_details=$request->block[$third_tier[$second_child_menu_key]];
+															 $p=0;
+															 if($third_child_details['main_menu']){
+															 foreach($third_child_details['main_menu'] as $third_child_menu_key=>$third_menu_val){
+
+																	$third_menu_child_details=MenuKeys::find($third_child_menu_key);
+																	$q=$third_menu_child_details->id;
+																	
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['tier_relation']=0;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['id']=$third_menu_child_details->id;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['name']=$third_menu_child_details->name;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['slug']=$third_menu_child_details->slug;
+																	$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['button_number']=$third_menu_child_details->button_number;
+																	if(isset($third_child_details['sub_menu'][$third_child_menu_key])){
+																	   $main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['submenu_slug']=$third_child_details['sub_menu'][$third_child_menu_key];
+																	}else{ 
+																		$third_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+																	}
+																	
+																	
+																	if($second_child_details['sub_menu'][$second_child_menu_key]=='dial_number'){
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
+																		
+																	}elseif($third_child_details['sub_menu'][$third_child_menu_key]=='spanish'){
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['submenu_label']='N/A';
+																	}else{ 
+																		$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['label']=$third_child_details['sub_menu_label'][$third_child_menu_key];
+																		//fouth child start
+																				
+																			$fourth_tier=array_filter($third_child_details['tier_child']); 
+																				if(isset($fourth_tier[$third_child_menu_key]) ){
+																				 $fourth_child_details=$request->block[$fourth_tier[$third_child_menu_key]];
+																				 $r=0;
+																				 if(isset($fourth_child_details['main_menu'])){
+																				 foreach($fourth_child_details['main_menu'] as $fourth_child_menu_key=>$foutyh_menu_val){
+
+																						$fourth_menu_child_details=MenuKeys::find($fourth_child_menu_key);
+																						$q=$fourth_menu_child_details->id;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['name']=$fourth_menu_child_details->name;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['slug']=$fourth_menu_child_details->slug;
+																						$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['button_number']=$fourth_menu_child_details->button_number;
+																						if(isset($fourth_child_details['sub_menu'][$fourth_child_menu_key])){
+																						   $main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['submenu_slug']=$fourth_child_details['sub_menu'][$fourth_child_menu_key];
+																						}else{ 
+																							$fourth_child_details['sub_menu'][$j]=$main_menu_details[$j]['submenu_slug']='split';
+																						}
+																						
+																						
+																						if($third_child_details['sub_menu'][$third_child_menu_key]=='dial_number'){
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['label']=$fourth_child_details['sub_menu_label'][$fourth_child_menu_key];
+																							
+																						}elseif($fourth_child_details['sub_menu'][$fourth_child_menu_key]=='spanish'){
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['submenu_label']='N/A';
+																						}else{ 
+																							$main_menu_details[$i]['list'][$x]['list'][$y]['list'][$p]['list'][$r]['label']=$fourth_child_details['sub_menu_label'][$fourth_child_menu_key];
+																						
+																							
+																						}
+																					 $r=$r+1;
+																					} 
+																				}
+																			}else{
+																				
+																			}												
+																		//fourth child end
+																		
+																	}
+																 $p=$p+1;
+																} 
+															}
+														}
+
+														//third tier end
+													  
+												}
+											 $y=$y+1;
+											} 
+										}
+										}
+
+									//second tier end
                                         
-                                        
-                                       
-                                        
-                                    }//echo '<pre>';print_r($main_menu_details);die();
+                                    }
                                  $x=$x+1;
-                                } //echo '<pre>';print_r($main_menu_details);die();
+						} }
                              //end
-                        }//die();
-                        //echo '<pre>';print_r($main_menu_details);die();
+                        }else{
+							//error
+							return response()->json(['errors'=>'Error Occured please try again later!']);
+							 \Session::flash('error_msg', 'Error Occured please try again later!');
+							 return redirect('/home');
+							 return redirect()->back()->withInput();
+						}
                     
-                        
                        
-                        
                     }
-                 //die();
+                 
                 }
                 
             }else{
@@ -632,34 +678,29 @@ class CompanyController extends Controller
                 $menu_json='';
                 $menu_array_json='';
             }
-        }else{
+        }else{ 
             $menu_json='';
             $menu_array_json='';
+            return response()->json(['errors'=>'Error Occured please try again later!']);
              \Session::flash('error_msg', 'Error Occured please try again later!');
+			 return redirect('/home');
              return redirect()->back()->withInput();
+
         }
             
         }else{
         $menu_json='';
         $menu_array_json='';
      }
-     //echo '<pre>';print_r($main_menu_details[$i]['submenu']['split'][$j]);
-      // echo '<pre>';print_r($main_menu_details);die();
-       // echo '<pre>';print_r($menu_json);die();
-   
         $id=$request->post('id'); 
         $this->validate($request, [
             'name' => Rule::unique('companies')->ignore($id),
         ]);
+        
          $validator = Validator::make($request->all(), [
-            'name' => 'required|max:200|regex:/^[\pL\s\-]+$/u|unique:companies,id,:id',
-            'company_phone_numbers' => 'required|min:1|numericarray',
-            'website' => 'sometimes|nullable|regex:/^http:\/\/\w+(\.\w+)*(:[0-9]+)?\/?$/',
-            'company_address1'=>'sometimes|nullable|alpha_dash',
-            'company_address2'=>'sometimes|nullable|alpha_dash',
-            'state'=>'sometimes|nullable|alpha_dash',
-            'city'=>'sometimes|nullable|alpha_dash',
-            'zipcode'=>'sometimes|nullable|alpha_dash',
+            'name' => 'required|max:200|unique:companies,id,:id',
+            'company_phone_numbers' => 'required|min:1|numericarray|validphonenumber:id,'.$id,
+            'website' => 'sometimes|nullable|validwebsite',
             'company_logo'=>'sometimes|nullable|image|mimes:jpg,jpeg,png|max:500000',
             'monday.from_time'=>'sometimes|nullable|date_format:H:i',
             'monday.to_time'=>'required_with:monday.from_time|sometimes|nullable|date_format:H:i',
@@ -675,11 +716,11 @@ class CompanyController extends Controller
             'saturday.to_time'=>'required_with:saturday.from_time|sometimes|nullable|date_format:H:i',
             'sunday.from_time'=>'sometimes|nullable|date_format:H:i',
             'sunday.to_time'=>'required_with:sunday.from_time|sometimes|nullable|date_format:H:i',
-            'facebook_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'twitter_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'instagram_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'yelp_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'pinterest_url' => 'sometimes|nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
+            'facebook_url' => 'sometimes|nullable|validwebsite',
+            'twitter_url' => 'sometimes|nullable|validwebsite',
+            'instagram_url' => 'sometimes|nullable|validwebsite',
+            'yelp_url' => 'sometimes|nullable|validwebsite',
+            'pinterest_url' => 'sometimes|nullable|validwebsite',
             'contact_name' => 'sometimes|nullable||regex:/^[\pL\s\-]+$/u',
             'contact_phone' => 'sometimes|nullable||numeric|digits_between:10,10',
             'contact_email' => 'sometimes|nullable||email',
@@ -688,8 +729,10 @@ class CompanyController extends Controller
             'company_phone_numbers' => 'Company Phone Number is required',
         ]);
         if ($validator->fails()) {
+            return response()->json(['errors'=>$validator->errors()->all()]);
            // \Session::flash('error_msg', 'Please fill required fields');
             return redirect()->back()->withErrors($validator->errors())->withInput();
+
         } else {
             $company_contact_numbers=$request->post('company_phone_numbers');
             if(count($company_contact_numbers) > 1){
@@ -755,26 +798,34 @@ class CompanyController extends Controller
             //save phone numbers
             if(count($company_contact_numbers) >= 1){
                 CompanyPhoneNumbers::where('company_id', '=', $company_id)->update(['status' => 0]);
-                foreach($company_contact_numbers as $numbers =>$phone_number_val){
-                     $company_numbers = CompanyPhoneNumbers::find($numbers);
+				
+                foreach($company_contact_numbers as $numbers){
+					
+                    // $company_numbers = CompanyPhoneNumbers::find($numbers);
+                    $company_numbers=CompanyPhoneNumbers::where('phone_number', $numbers)->first();
+					//var_dump($numbers);die();
+					//var_dump($company_numbers);die();
                     if($company_numbers){
                         $company_numbers->company_id = $company_id;
-                        $company_numbers->phone_number=$phone_number_val;
+                        $company_numbers->phone_number=$numbers;
                         $company_numbers->status=1;
                         $company_numbers->save();
                     }else{
                         $company_numbers = new \App\CompanyPhoneNumbers;
                         $company_numbers->company_id = $company_id;
-                        $company_numbers->phone_number=$phone_number_val;
+                        $company_numbers->phone_number=$numbers;
                         $company_numbers->save();
                     }
                     
                 }   
             }
-            \Session::flash('success_msg', 'Company updated successfully!');
-        }else{
-            \Session::flash('error_msg', 'Error Occured please try again later!');
-        }
+            \Session::flash('success_msg', 'Business Profile is successfully updated!');
+			return response()->json(['success'=>'Business Profile is successfully added']);
+
+			 }else{
+				 \Session::flash('error_msg', 'sdError Occured please try again later!');
+			 }
+       
         return redirect()->route('company.index');
     }
 }
@@ -789,7 +840,7 @@ class CompanyController extends Controller
         $company = Company::find($id);
         $company->delete();
         DB::table('company_phone_numbers')->where('company_id', $id)->delete();
-         \Session::flash('success_msg','Company Removed Successfully!');
+         \Session::flash('success_msg','Business Profile Removed Successfully!');
          return redirect()->route('company.index');
     }
      public function filter(Request $request, Company $company)
@@ -808,11 +859,17 @@ class CompanyController extends Controller
        $tier_heading=$request->get('tier_heading','');
        $menu_parent=$request->get('menu_parent','');
        $tier_parent=$request->get('tier_parent','');
+	   $visbiletier=$request->get('visbiletier','');
+	   if($tier_heading=='Time Delayed Action'){
+		   $display='none';
+	   }else{
+		   $display='visible';
+	   }
        if(isset($id)){
         $tier_key=$id;
          $menu_meta = MenuMeta::all();
          $menu_keys = MenuKeys::all();
-         return view('company._partial_menu_template',compact('tier_key','menu_meta','menu_keys','btn_id','tier_title','tier_heading','menu_parent','tier_parent'));
+         return view('company._partial_menu_template',compact('tier_key','menu_meta','menu_keys','btn_id','tier_title','tier_heading','menu_parent','tier_parent','visbiletier','display'));
        }
         
     }
@@ -838,49 +895,78 @@ class CompanyController extends Controller
         else
             return ['value'=>'No Result Found','id'=>''];
     }
-   /* protected function menuvalidate($child_details) {
-        //start
-     foreach($child_details['main_menu'] as $child_menu_key=>$menu_val){
-           // echo '<pre>';print_r($menu_key);die();
-            $menu_child_details=MenuKeys::find($child_menu_key);
-            $j=$menu_child_details->id;
-            $main_menu_details[$i]['submenu']['split'][$j]['tier_relation']=0;
-            $main_menu_details[$i]['submenu']['split'][$j]['id']=$menu_child_details->id;
-            $main_menu_details[$i]['submenu']['split'][$j]['name']=$menu_child_details->name;
-            $main_menu_details[$i]['submenu']['split'][$j]['slug']=$menu_child_details->slug;
-            $main_menu_details[$i]['submenu']['split'][$j]['button_number']=$menu_child_details->button_number;
-            if(isset($child_details['sub_menu'][$child_menu_key])){
-               $main_menu_details[$i]['submenu']['split'][$j]['submenu_slug']=$child_details['sub_menu'][$child_menu_key];
-            }else{ 
-                $child_details['sub_menu'][$child_menu_key]=$main_menu_details[$j]['submenu_slug']='split';
+   
+       /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function callhistory($id)
+    { 
+        $title='Call History : '.$id;
+        $phone_number=$id;
+        $dial_list =DialLog::select('dialed_from')->where('dialed_to',$phone_number)->groupBy('dialed_from')->get()->toArray() ;
+		$dial_history = DB::select("SELECT dialed_from, COUNT(dialed_from)as dialcount FROM dial_log WHERE dialed_to=".$phone_number." GROUP BY dialed_from HAVING COUNT(dialed_from) > 1");
+
+        return view('company.callhistory',compact('phone_number','dial_list','title','dial_history'));
+    }
+    
+    public function autoFilter(Request $request) {
+	
+        $query = $request->post('filter_name');
+		$draw=$request->post('draw');
+		$skip=$request->post('start',0);
+		$limit=10;
+
+		$totalRecords= Company::where('status', '=',1 )->get();
+        if($query){
+            $totalRecordsWithFilter= Company::where('name', $query)->orWhere('name', 'like', '%' . $query . '%')->orWhere('phone_numbers', 'like', '%' . $query . '%')->get();
+            $company_list=Company::where('name', $query)->orWhere('name', 'like', '%' . $query . '%')->orWhere('phone_numbers', 'like', '%' . $query . '%')->orderBy('id','DESC')->skip($skip)->take($limit)->get();
+            $data=array();
+            foreach ($company_list as $company) {
+                    $phone_numbers=explode(",", $company->phone_numbers);
+					 if($phone_numbers){
+						
+						if(count($phone_numbers) >1){
+							$phone=$phone_numbers[0]." <a href='".route('company.edit',$company->id)."' class='btn-link btn-link-sm more-link'>More</a>";
+						}else{
+							$phone=$phone_numbers[0];
+						}
+					 }else{
+						$phone=$company->phone_numbers;
+					 }
+					 $delete="  <button class='btn btn-danger btn-xs delete' data-toggle='modal' data-companyid='".$company->id."' data-target='#deleteModal' data-url='". url('/company/delete/'.$company->id)."'>Remove</button>";
+                   $company_name="<a href='".url('company/profile/'.$company->id)."'>$company->name</a>";
+				   $data[]=array('id'=>$company->id,'company'=>$company_name,"phone_number"=>$phone,"action"=>$delete);
             }
-            
-            $main_menu_details[$i]['submenu']['split'][$j]['submenu']['slug']=$child_details['sub_menu'][$child_menu_key];
-            if($child_details['sub_menu'][$child_menu_key]=='dial_number'){
-                $main_menu_details[$i]['submenu']['split'][$j]['label']=$child_details['sub_menu_label'][$child_menu_key];
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['label']=$child_details['sub_menu_label'][$child_menu_key];
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['id']=1;
-                
-            }elseif($child_details['sub_menu'][$child_menu_key]=='spanish'){
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu_label']='N/A';
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['label']='N/A';
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['id']=3;
-            }else{
-                
-                if($child_details['tier_child'][$j]){
-                    $main_menu_details[$i]['submenu']['split'][$j]['tier_child'][$child_menu_key]['tier_id']=$child_details['tier_child'][$j];
-                     $main_menu_details[$i]['submenu']['split'][$j]['tier_child'][$child_menu_key]['child']=$request->block[$child_details['tier_child'][$j]];
-                    
-                }
-                
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['id']=2;
-                 $main_menu_details[$i]['submenu']['split'][$j]['label']=$child_details['sub_menu_label'][$child_menu_key];
-                $main_menu_details[$i]['submenu']['split'][$j]['submenu']['label']=$child_details['sub_menu_label'][$child_menu_key];
-               
-                
+        }else{
+            $totalRecordsWithFilter= Company::where('status', '=',1 )->orderBy('id','DESC')->get();
+            $company_list=Company::where('status', '=',1 )->orderBy('id','DESC')->skip($skip)->take($limit)->get();
+            foreach ($company_list as $company) { 
+					$phone_numbers=explode(",", $company->phone_numbers);
+					 if($phone_numbers){
+						
+						if(count($phone_numbers) >1){
+							$phone=$phone_numbers[0]." <a href='".route('company.edit',$company->id)."' class='btn-link btn-link-sm more-link'>More</a>";
+						}else{
+							$phone=$phone_numbers[0];
+						}
+					 }else{
+						$phone=$company->phone_numbers;
+					 }
+					 $delete="  <button class='btn btn-danger btn-xs delete' data-toggle='modal' data-companyid='".$company->id."' data-target='#deleteModal' data-url='". url('/company/delete/'.$company->id)."'>Remove</button>";
+                     $company_name="<a href='".url('company/profile/'.$company->id)."'>$company->name</a>";
+					$data[]=array('id'=>$company->id,'company'=>$company_name,"phone_number"=>$phone,"action"=>$delete);
             }
-         
         }
-        //end
-    }*/
+         
+		$response = array(
+		  "draw" => intval($draw),
+		  "iTotalRecords" => count($totalRecords),
+		  "iTotalDisplayRecords" => count($totalRecordsWithFilter),
+		  "aaData" => $data
+		);
+
+		echo json_encode($response);
+    }
 }
