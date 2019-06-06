@@ -32,7 +32,7 @@
                   return  $index;
                 }
                 
-				  $scope.getSubSplitName = function ( $index,$menu_id) {
+          $scope.getSubSplitName = function ( $index,$menu_id) {
                   return $scope.name + '[' + $index + '][tier_child]['+$menu_id+']';
                 }
                 $scope.getTierLabel = function ($index) {
@@ -47,7 +47,7 @@
                   idel.removeAttr('disabled'); 
                   $scope.fieldGroups.push({}); 
                   var indexid=parseFloat(obj.target.attributes.data.value)+1;
-                  //console.log(indexid);
+                 // console.log('tier:- '+indexid);
                   var tiername='block_'+indexid+'_tier';
                   $scope.tiername = obj.target.attributes.id.value;
                 
@@ -72,304 +72,453 @@
                      
         });
       
- $(document).ready(function(){ 
-  var childArray = {};
-  //split disabled 
-  $('.split_radio_button:checked').each(function () {
-    var tierid=$(this).parent().parent().parent().children("input:first").data("id");
-    $('#repeat_'+tierid+' .split_radio_button').attr('disabled','disabled');
-  });
-        $(document).on('submit','#company-form',function(e){
-          var validation_error=false;
-         $('input.checkbox-button:checkbox:checked').each(function () {
-              var sThisVal = $(this).val();
-              var input_btn_id=$(this).attr('btn-id');
-              var spanish_btn_id=$(this).attr('spanish-btn-id');
-			var inputboxval=$(this).parent().parent().siblings('.row').children().find('.form-control-sm').val();
-			//console.log(inputboxval.length);
-			   //console.log($("#"+spanish_btn_id).is(':checked'));
-              if (inputboxval.length==0 && $("#"+spanish_btn_id).is(':checked')==false) {
-               validation_error=true;
-              }
-              
-          });
-         if(validation_error){
-          $('#error-msg').html('<div class="alert alert-danger"><ul><li>DialTree options are missing</li></ul></div>');
-          $( "#error-msg" ).focus();
-          return false;
-         }
-          e.preventDefault();
-               $.ajaxSetup({
-                  headers: {
-                      'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content')
-                  }
-              });
-               $.ajax({
-                  url: "{{ url('company/store') }}",
-                  method: 'post',
-                  data: $('#company-form').serialize(),
-                  success: function(data){ 
-                    
-                    if(data.success){
-                      window.location.replace("{{ url('/home') }}");
-                    } 
-					$('.alert-danger').text('');
-					if(data.errors){
-						 $('.alert-danger').show();
-                        $('.alert-danger').append('<p>DialTree options are missing</p>');
-					}
-					
-                      $.each(data.errors, function(key, value){
-                        $('.alert-danger').show();
-                        $('.alert-danger').append('<p>'+value+'</p>');
-                      });
-                  }
-                    
-                  });
-         
+$(document).ready(function() {
+    var childArray = {};
+    //split disabled 
+    $('.split_radio_button:checked').each(function() {
+        var tierid = $(this).parent().parent().parent().children("input:first").data("id");
+        $('#repeat_' + tierid + ' .split_radio_button').attr('disabled', 'disabled');
+    });
+    $(document).on('submit', '#company-form', function(e) {
+        var validation_error = false;
+        $('input.checkbox-button:checkbox:checked').each(function() {
+            var sThisVal = $(this).val();
+            //console.log(sThisVal);
+            var input_btn_id = $(this).attr('btn-id');
+            var spanish_btn_id = $(this).attr('spanish-btn-id');
+            var inputboxval = $(this).parent().parent().siblings('.row').children().find('.form-control-sm').val();
+
+            //  if (inputboxval.length==0 && $("#"+spanish_btn_id).is(':checked')==false) {
+            if (inputboxval.length == 0) {
+                if ($("#" + spanish_btn_id).is(':checked') == false) {
+                    validation_error = true;
+                }
+            }
+
+        });
+        if (validation_error) {
+			$('.alert-danger').text('');
+			$('.alert-danger').show();
+			
+			if($("input[name=name]").val()=='')
+				$('.alert-danger').append('<p>The name field is required</p>');
+			if($(".company_phone_number").val()=='')
+				$('.alert-danger').append('<p>The phone number field is not a valid 10-digit phone number (must not include spaces or special characters)</p>');
+			
+            $('.alert-danger').append('<p>DialTree options labels are missing</p>');
+            $(".alert-danger").focus();
+            return false;
+        }
+        e.preventDefault();
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content'),
+            }
         });
 
-       //checkbox change
-        $( document ).on( "change", ".checkbox-button", function () {
-          var ischecked= $(this).is(':checked');
-          if(ischecked){
-             if($(this).parent().parent().siblings('.row').hasClass('ng-hide')){
-               $(this).parent().parent().siblings('.row').toggleClass('ng-hide')
+        $.ajax({
+            url: "{{ url('company/store') }}",
+            method: 'post',
+			data:new FormData(this),
+			contentType: false,
+			dataType:'JSON',
+			cache: false,
+			processData: false,
+            success: function(data) {
+
+                if (data.success) {
+                    $('.alert-danger').text('');
+                    window.location.replace("{{ url('/home') }}");
+                }
+                $('.alert-danger').text('');
+                if (data.errors) {
+                    if (data.errors == 'Error Occured please try again later!') {
+                        console.log(data.errors);
+                        $('.alert-danger').show();
+                        $('.alert-danger').append('<p>DialTree Tier options are missing</p>');
+                    } else {
+                        $.each(data.errors, function(key, value) {
+                            $('.alert-danger').show();
+                            $('.alert-danger').append('<p>' + value + '</p>');
+                        });
+                    }
+                }
             }
-          }
-           
-          if(!ischecked){
-             if(!$(this).parent().parent().siblings('.row').hasClass('ng-hide')){
-               $(this).parent().parent().siblings('.row').toggleClass('ng-hide')
+
+        });
+
+    });
+    //checkbox change
+    $(document).on("change", ".checkbox-button", function() {
+		
+        var ischecked = $(this).is(':checked');
+        if (ischecked) {
+            if ($(this).parent().parent().siblings('.row').hasClass('ng-hide')) {
+                $(this).parent().parent().siblings('.row').toggleClass('ng-hide')
+            }
+			 if ($(this).val() == 'time_delayed_action') {
+				$(this).parent().parent().siblings('.row').find("input[value='split']").click();
+			 }
+        }
+
+        if (!ischecked) {
+            if (!$(this).parent().parent().siblings('.row').hasClass('ng-hide')) {
+                $(this).parent().parent().siblings('.row').toggleClass('ng-hide')
             }
             $(this).parent().parent().siblings('.row').removeAttr('ng-hide');
             $(this).parent().parent().siblings('.row').toggleClass('ng-hide');
-            var splitcheckbutton=$(this).parent().parent().siblings('.row').children().children().siblings('.form-check').children().children().eq(1);
-
-            if($(this).val()=='time_delayed_action'){
-              var tierid=$(this).data("id");
-              var tm_split=$(this).parent().parent().siblings('.row').children().children().siblings('.form-check').children().children();
-              if($(tm_split).is(':checked')){
-                 var next_tier_id=parseFloat(tierid)+1;
-                    $('#repeat_'+next_tier_id).remove();
-                    $('#repeat_'+tierid).find('.split_radio_button').removeAttr('disabled');
-                 $('#repeat_'+tierid+' .split_radio_button').removeAttr('disabled');
-                  //$('#repeat_'+tierid).find('.split_radio_button').val('');
-
-              }
-             
-            }
-            if($(splitcheckbutton).is(':checked')){ 
-               var tierid=$(this).data("id"); 
-                  var splitchild=$(this).parent().parent().siblings('.row').children().children("input:first").data("child");
-				  console.log($("[data-tierparent="+splitchild+"]").attr('id'));
-               if( $("[data-tierparent="+splitchild+"]").attr('id')){
-				   var datathirdchild=$("[data-tierparent=#"+splitchild+"]").attr('id');
-				   var datafourthchild=$("[data-tierparent=#"+datathirdchild+"]").attr('id');
-				   console.log(datathirdchild);
-				   //console.log(datafourthchild);
-				   //if(datafourthchild){
-					//   $(datafourthchild).remove();
-				   //}
-				      $("[data-tierparent=#"+datathirdchild+"]").remove();
-			   }
-                  $("[data-tierparent=#"+splitchild+"]").remove();
-				console.log(splitchild);
-              $(splitchild).remove();
-             $(this).parent().parent().siblings('.row').toggleClass('ng-hide');
-            }else{
-               $(this).parent().parent().siblings('.row').toggleClass('ng-hide');
-            }
-			
-			$(this).siblings("input:radio[disabled=false]:first").attr('checked', true);
-			$(this).parent().parent().siblings('.row').find(".menu_2").attr('checked', true);
-           // $(this).siblings("input:radio[disabled=false]:first").attr('checked', true);
-		   
-            var closeClassName=$(this).data('class'); 
-             $('#repeat_'+$(this).attr('data-id')+' .'+closeClassName).each(function() { 
-			 if($(this).val()=='dial_number'){
-				 $(this).parent().parent().parent().children("input:first").val('');
-				  $(this).prop('checked',true);
-			 }else{
-				 $(this).parent().parent().parent().children("input:first").val('');
-				  $(this).prop('checked',false);
-			 }
-              
-               $(this).removeAttr('disabled');
-             });
-             
-            if($(this).parent().parent().siblings('.row').children().children("input:first").hasClass('radiobuttons')){ 
-              
-              var tierid=$(this).data("id");
-              var splitchild=$(this).parent().parent().siblings('.row').children().children("input:first").data("child");
-              $(splitchild).remove();
-              $(this).parent().parent().siblings('.row').children().children("input:first").toggleClass("radiobuttons");
-              
-           }
-          }else{
-           
-          }
-          
-      }); 
-
-		$( document ).on( "change paste keyup", ".radiobuttons",function(e){ 
-			var tier_child_id=$(this).attr('data-child');
-			$(tier_child_id).find('h5').text($(this).val());
-		});
-          //radio change
-           $( document ).on( "change", ".rd",function(e){ 
-            
-           // console.log($(this).val());
-              if($(this).val() == 'spanish') {
-                  var thatInput=$(this).parent().parent().parent().children("input:first").val('N/A');
-                  $(this).parent().parent().parent().children("input:first").attr('disabled', 'disabled'); 
-                  if($(this).parent().parent().parent().children("input:first").hasClass('radiobuttons')){
-                    var tierid=$(this).parent().parent().parent().children("input:first").data("id");
-                    var splitchild=$(this).parent().parent().parent().children("input:first").data("child");
-                     $(splitchild).remove();
-                      $(this).parent().parent().parent().find('.tierchild').val();
-                    $(this).parent().parent().parent().children("input:first").toggleClass("radiobuttons");
-                   // $('#repeat_'+tierid+' .split_radio_button').removeAttr('disabled');
-                  }
-                  
-              } else if($(this).val() == 'split'){  
-                var numItems = $('.repeat-class').length; 
-                $(this).attr('checked','checked');
-                var thatInput=$(this).parent().parent().parent().children("input:first").val();
-                $(this).parent().parent().parent().children("input:first").addClass("radiobuttons");
-                  $(this).parent().parent().parent().children("input:first").removeAttr('disabled');
-                  var tierid=$(this).parent().parent().parent().children("input:first").data("id");
-                  var next_tier_id=parseFloat(numItems);
-                  $('#hidden_repeat_'+next_tier_id).val($(this).attr('id'));
-                 // console.log($('#h3_repeat_'+next_tier_id).text($(this).attr('databutton')));
-                    
-                   $('#tierlabel_repeat_'+next_tier_id).text(thatInput);
-                 
-                  //clone div
-                  $(this).attr('data-child','#repeat_'+next_tier_id);
-                  //numItems
-                 // $(this).closest("div.content").find("input[name=’rank’]").val();
-				
-                 $(this).parent().siblings().val(numItems);
-                   $(this).parent().parent().parent().children("input:first").attr('data-child','#repeat_'+next_tier_id)
-                   $(this).attr('data-tierchild','#repeat_'+next_tier_id)
-				   $(this).parent().siblings('.tierchild').attr('data-tierchild','#repeat_'+next_tier_id);
-				   $(this).parent().siblings('.tierchild').attr('data-child','#repeat_'+next_tier_id);
-                   var get_url=$(this).attr('data-href');
-                   var tier_heading=$(this).attr('data-parent');
-                   var menu_parent=$(this).attr('data-parentmenuid');
-                    /*$.get(get_url, { id: numItems,tier_parent:tierid, btn_id: $(this).attr('id') ,tier_title:thatInput,tier_heading:tier_heading,menu_parent:menu_parent},function (data) {
-                       $(".flex-nowrap").append(data);
-                    });*/
-					var radioname=$(this).attr('name');
-					// console.log($(this).attr('name'));
-                    $.ajax({
-							type: 'GET',
-							url: get_url,
-							data: { id: numItems,tier_parent:tierid, btn_id: $(this).attr('id') ,tier_title:thatInput,tier_heading:tier_heading,menu_parent:menu_parent},
-							beforeSend: function() {
-							      $('input[name="'+radioname+'"]').map(function() { 
-								  //console.log($(this).val());
-										 if($(this).val()=='split'){
-											 
-										 }else{
-											 $(this).attr('disabled',true);
-										 }  
-									});
-							},
-							success: function(data) {
-								$(".flex-nowrap").append(data);
-								 $('input[name="'+radioname+'"]').map(function() { 
-										 if($(this).val()=='split'){
-											 
-										 }else{
-											 $(this).removeAttr('disabled');
-										 }  
-									});
-							},
-							error: function(xhr) { // if error occured
-							   
-							},
-							complete: function() {
-							  // $(".flex-nowrap").append(data);
-							  //$('input[name='+$(this).attr('name')+']').removeAttr('disabled');
-							}
-						});
-                    $('.repeat-class').hide();
-                    
-                    
-					//console.log(tierid);
-					if($('#repeat_'+tierid).attr('data-tierparent')){
-						  $($('#repeat_'+tierid).attr('data-tierparent')).show();
-						}
+            var splitcheckbutton = $(this).parent().parent().siblings('.row').children().children().siblings('.form-check').children().children().eq(1);
+            if ($(this).val() == 'time_delayed_action') {
+                var tierid = $(this).data("id");
+                var tm_split = $(this).parent().parent().siblings('.row').children().children().siblings('.form-check').children().children();
+                if ($(tm_split).is(':checked')) {
+                    var splitchild = $(this).parent().parent().siblings('.row').children().children("input:first").data("child");
+                    if(splitchild){
 					
-					if(tierid==2){
-						//console.log('2- '+tierid);
-						var tiersecond_parent=$('#repeat_'+tierid).attr('data-tierparent');
-						//console.log('hbg '+tiersecond_parent);
-						  $($(tiersecond_parent).attr('data-tierparent')).show();
-					}
-					if(tierid==3){
-						//console.log('3- '+tierid);
-						var tiersecond_parent=$('#repeat_'+tierid).attr('data-tierparent');
-						$(tiersecond_parent).show();
-						$($(tiersecond_parent).attr('data-tierparent')).show();
-						//console.log($(tiersecond_parent).attr('data-tierparent'));
-						var tierfirst_parent=$($(tiersecond_parent).attr('data-tierparent')).attr('data-tierparent');
-						//console.log(tierfirst_parent);
-						$(tierfirst_parent).show();
-						
-						
-					}
-					//console.log($('#repeat_'+tierid).attr('data-tierparent'));
-                   $('#repeat_'+tierid).show();
-                    $('#repeat_'+next_tier_id).show();
-                    $('#repeat_0').show();
-                    
-                    
-              }else {
-                  var thatInput=$(this).parent().parent().parent().children("input:first").val('');
-                  $(this).parent().parent().parent().children("input:first").removeAttr('disabled');
-                  if($(this).parent().parent().parent().children("input:first").hasClass('radiobuttons')){
-                     var tierid=$(this).parent().parent().parent().children("input:first").data("id");
-                  
-                   var next_tier_id=parseFloat(tierid)+1;
-                    var numItems = $('.repeat-class').length;
-                    var splitchild=$(this).parent().parent().parent().children("input:first").data("child");
-                     $(splitchild).remove();
-                      $(this).parent().parent().parent().find('.tierchild').val();
-                    /*if(numItems >tierid){
-                      for(var i=next_tier_id;i<=numItems;i++){
-                        $('#repeat_'+i).remove();
-                      }
-                    }*/
-                  //  $('#repeat_'+next_tier_id).remove();
-                     $('#repeat_'+tierid+' .split_radio_button').removeAttr('disabled');
-                    $(this).parent().parent().parent().children("input:first").toggleClass("radiobuttons");
-                    
-                  }
-              }
-          });
-         
-      });
- //split label click show child tier
-        $( document ).on( "click", ".form-check-label-split", function () {
-             if($(this).children().attr('data-tierchild')){
-             $('.repeat-class').hide();
-             $('#repeat_0').show();
-			 
-             //console.log($(this).children().attr('data-tierchild'));
-            var parent=$($(this).children().attr('data-tierchild')).attr('data-tierparent');
-			var child=$(this).attr('data-child');
-            if(parent){
-              $(parent).show();
-            }
-			//console.log($(this).children().attr('data-tier_parent'));
-			$($(this).children().attr('data-tier_parent')).show();
-            $($(this).children().attr('data-tierchild')).show();
+						$(splitchild+' .split_radio_button:checked').each(function() {
+							var homechild_id=$(this).attr('data-child');
+							//console.log(homechild_id);
+							$(homechild_id+' .split_radio_button:checked').each(function() {
+								var secondchild_id=$(this).attr('data-child');
+								//console.log(secondchild_id);
+								$(secondchild_id+' .split_radio_button:checked').each(function() {
+									var thirdchild_id=$(this).attr('data-child');
+									//console.log(thirdchild_id);
+									$(thirdchild_id+' .split_radio_button:checked').each(function() {
+										var fourthchild_id=$(this).attr('data-child');
+										//console.log(fourthchild_id);
+										$(fourthchild_id).remove();
+									});
+									$(thirdchild_id).remove();
+								});
+								$(secondchild_id).remove();
+									
+								});
+								$(homechild_id).remove();
+						});		
 
-          }
-        });
+					}
+                    $('#repeat_' + tierid).find('.split_radio_button').removeAttr('disabled');
+                    $('#repeat_' + tierid + ' .split_radio_button').removeAttr('disabled');
+                    //$('#repeat_'+tierid).find('.split_radio_button').val('');
+                }
+
+            }
+            if ($(splitcheckbutton).is(':checked')) {
+                var tierid = $(this).data("id");
+                var splitchild = $(this).parent().parent().siblings('.row').children().children("input:first").data("child");
+				
+				//console.log(splitchild);
+                if ($("[data-tierparent=" + splitchild + "]").attr('id')) {
+					if(splitchild){
+							
+								$(splitchild+' .split_radio_button:checked').each(function() {
+									var homechild_id=$(this).attr('data-child');
+									//console.log(homechild_id);
+									$(homechild_id+' .split_radio_button:checked').each(function() {
+										var secondchild_id=$(this).attr('data-child');
+										//console.log(secondchild_id);
+										$(secondchild_id+' .split_radio_button:checked').each(function() {
+											var thirdchild_id=$(this).attr('data-child');
+											//console.log(thirdchild_id);
+											$(thirdchild_id+' .split_radio_button:checked').each(function() {
+												var fourthchild_id=$(this).attr('data-child');
+												//console.log(fourthchild_id);
+												$(fourthchild_id).remove();
+											});
+											$(thirdchild_id).remove();
+										});
+										$(secondchild_id).remove();
+											
+										});
+										$(homechild_id).remove();
+								});		
+	
+					}
+					
+                }
+                $(this).parent().parent().siblings('.row').toggleClass('ng-hide');
+            } else {
+                $(this).parent().parent().siblings('.row').toggleClass('ng-hide');
+            }
+
+            $(this).siblings("input:radio[disabled=false]:first").attr('checked', true);
+            $(this).parent().parent().siblings('.row').find(".menu_2").attr('checked', true);
+            // $(this).siblings("input:radio[disabled=false]:first").attr('checked', true);
+
+            var closeClassName = $(this).data('class');
+            $('#repeat_' + $(this).attr('data-id') + ' .' + closeClassName).each(function() {
+                if ($(this).val() == 'dial_number') {
+                    $(this).parent().parent().parent().children("input:first").val('');
+                    $(this).prop('checked', true);
+                } else {
+                    $(this).parent().parent().parent().children("input:first").val('');
+                    $(this).prop('checked', false);
+                }
+
+                $(this).removeAttr('disabled');
+            });
+
+            if ($(this).parent().parent().siblings('.row').children().children("input:first").hasClass('radiobuttons')) {
+
+                var tierid = $(this).data("id");
+                var splitchild = $(this).parent().parent().siblings('.row').children().children("input:first").data("child");
+                $(splitchild).remove();
+                $(this).parent().parent().siblings('.row').children().children("input:first").toggleClass("radiobuttons");
+
+            }
+        } else {
+
+        }
+
+    });
+    $(document).on("change paste keyup", ".radiobuttons", function(e) {
+        var tier_child_id = $(this).attr('data-child');
+        $(tier_child_id).find('h5').text($(this).val());
+    });
+    //radio change
+    $(document).on("change", ".rd", function(e) {
+
+        if ($(this).val() == 'spanish') {
+            var thatInput = $(this).parent().parent().parent().children("input:first").val('N/A');
+            $(this).parent().parent().parent().children("input:first").attr('disabled', 'disabled');
+            if ($(this).parent().parent().parent().children("input:first").hasClass('radiobuttons')) {
+                var tierid = $(this).parent().parent().parent().children("input:first").data("id");
+                var splitchild = $(this).parent().parent().parent().children("input:first").data("child");
+                
+                $(this).parent().parent().parent().find('.tierchild').val();
+                $(this).parent().parent().parent().children("input:first").toggleClass("radiobuttons");
+
+                $('.repeat-class').hide();
+                $('#repeat_0').show();
+				$('#repeat_' + tierid).show();
+				 var tiersecond_parent = $('#repeat_' + tierid).attr('data-tierparent');
+                $(tiersecond_parent).show();
+				//console.log(splitchild);
+                $(splitchild+' .split_radio_button:checked').each(function() {
+						var homechild_id=$(this).attr('data-child');
+						//console.log(homechild_id);
+						$(homechild_id+' .split_radio_button:checked').each(function() {
+							var secondchild_id=$(this).attr('data-child');
+							//console.log(secondchild_id);
+							$(secondchild_id+' .split_radio_button:checked').each(function() {
+								var thirdchild_id=$(this).attr('data-child');
+								//console.log(thirdchild_id);
+								$(thirdchild_id+' .split_radio_button:checked').each(function() {
+									var fourthchild_id=$(this).attr('data-child');
+									//console.log(fourthchild_id);
+									$(fourthchild_id).remove();
+								});
+								$(thirdchild_id).remove();
+							});
+							$(secondchild_id).remove();
+								
+							});
+							$(homechild_id).remove();
+					});	
+				$(splitchild).remove();
+            }
+
+        } else if ($(this).val() == 'split') { alert('clicked');
+	
+            var numItems = $('.repeat-class').length;
+            if ($('#repeat_' + numItems).length) {
+                numItems = numItems + 1;
+            }
+            $(this).attr('checked', 'checked');
+			if($(this).parent().parent().parent().children("input:first").val()=='N/A')
+			$(this).parent().parent().parent().children("input:first").val('');
+            var thatInput = $(this).parent().parent().parent().children("input:first").val();
+            $(this).parent().parent().parent().children("input:first").addClass("radiobuttons");
+            $(this).parent().parent().parent().children("input:first").removeAttr('disabled');
+            var tierid = $(this).parent().parent().parent().children("input:first").data("id");
+            var next_tier_id = parseFloat(numItems);
+            $('#hidden_repeat_' + next_tier_id).val($(this).attr('id'));
+            $('#tierlabel_repeat_' + next_tier_id).text(thatInput);
+
+            //clone div
+            $(this).attr('data-child', '#repeat_' + next_tier_id);
+            //numItems
+
+            $(this).parent().siblings().val(numItems);
+            $(this).parent().parent().parent().children("input:first").attr('data-child', '#repeat_' + next_tier_id)
+            $(this).attr('data-tierchild', '#repeat_' + next_tier_id)
+            $(this).parent().siblings('.tierchild').attr('data-tierchild', '#repeat_' + next_tier_id);
+            $(this).parent().siblings('.tierchild').attr('data-child', '#repeat_' + next_tier_id);
+            var get_url = $(this).attr('data-href');
+            var tier_heading = $(this).attr('data-parent');
+            var menu_parent = $(this).attr('data-parentmenuid');
+
+            var visbiletier = 1;
+            var me = $(this);
+            e.preventDefault();
+
+            if (me.data('requestRunning')) {
+                return;
+            }
+            me.data('requestRunning', true);
+            var tiersecond_parent = $('#repeat_' + tierid).attr('data-tierparent');
+            if (tiersecond_parent) {
+                var tierfirst_parent = $($(tiersecond_parent).attr('data-tierparent')).attr('data-tierparent');
+            }
+            if (tiersecond_parent && tierfirst_parent) {
+                visbiletier = 4;
+            }
+            var radioname = $(this).attr('name');
+            $.ajax({
+                type: 'GET',
+                url: get_url,
+                data: {
+                    id: numItems,
+                    tier_parent: tierid,
+                    btn_id: $(this).attr('id'),
+                    tier_title: thatInput,
+                    tier_heading: tier_heading,
+                    menu_parent: menu_parent,
+                    visbiletier: visbiletier
+                },
+                beforeSend: function() {
+                    $('input[name="' + radioname + '"]').map(function() {
+                        //console.log($(this).val());
+                        if ($(this).val() == 'split') {
+
+                        } else {
+                            $('.rd').attr('disabled', true);
+                        }
+                    });
+                },
+                success: function(data) {
+                    $(".flex-nowrap").append(data);
+					
+                    $('input[name="' + radioname + '"]').map(function() {
+                        if ($(this).val() == 'split') {
+
+                        } else {
+                            $('.rd').prop('disabled', true).delay(1000).prop('disabled', false);
+                            //$(this).removeAttr('disabled');
+                        }
+                    });
+					//console.log('#repeat_'+next_tier_id);
+					 var elmnt = document.getElementById('repeat_'+next_tier_id);
+					elmnt.scrollIntoView();
+					
+                },
+                error: function(xhr) {
+
+                },
+                complete: function() {
+                    me.data('requestRunning', false);
+                }
+            });
+            $('.repeat-class').hide();
+
+            if ($('#repeat_' + tierid).attr('data-tierparent')) {
+                $($('#repeat_' + tierid).attr('data-tierparent')).show();
+            }
+            if (tierid) {
+                var tiersecond_parent = $('#repeat_' + tierid).attr('data-tierparent');
+                if (tiersecond_parent)
+                    $($(tiersecond_parent).attr('data-tierparent')).show();
+            }
+            if (tiersecond_parent) {
+                var tiersecond_parent = $('#repeat_' + tierid).attr('data-tierparent');
+                $(tiersecond_parent).show();
+                $($(tiersecond_parent).attr('data-tierparent')).show();
+                var tierfirst_parent = $($(tiersecond_parent).attr('data-tierparent')).attr('data-tierparent');
+                if (tierfirst_parent)
+                    $(tierfirst_parent).show();
+            }
+
+            $('#repeat_0').show();
+			$('#repeat_' + next_tier_id).show();
+			$('#repeat_' + tierid).show();
+			
+				
+
+        } else {
+			if($(this).parent().parent().parent().children("input:first").val()=='N/A')
+				$(this).parent().parent().parent().children("input:first").val('')
+            var thatInput = $(this).parent().parent().parent().children("input:first").val();
+            $(this).parent().parent().parent().children("input:first").removeAttr('disabled');
+            if ($(this).parent().parent().parent().children("input:first").hasClass('radiobuttons')) {
+                var tierid = $(this).parent().parent().parent().children("input:first").data("id");
+
+                var next_tier_id = parseFloat(tierid) + 1;
+                var numItems = $('.repeat-class').length;
+                var splitchild = $(this).parent().parent().parent().children("input:first").data("child");
+               
+                $(this).parent().parent().parent().find('.tierchild').val();
+
+                $('.repeat-class').hide();
+                $('#repeat_0').show();
+				$('#repeat_' + tierid).show();
+				var tiersecond_parent = $('#repeat_' + tierid).attr('data-tierparent');
+                $(tiersecond_parent).show();
+				//console.log(splitchild);
+                $(splitchild+' .split_radio_button:checked').each(function() {
+						var homechild_id=$(this).attr('data-child');
+						//console.log(homechild_id);
+						$(homechild_id+' .split_radio_button:checked').each(function() {
+							var secondchild_id=$(this).attr('data-child');
+							//console.log(secondchild_id);
+							$(secondchild_id+' .split_radio_button:checked').each(function() {
+								var thirdchild_id=$(this).attr('data-child');
+								//console.log(thirdchild_id);
+								$(thirdchild_id+' .split_radio_button:checked').each(function() {
+									var fourthchild_id=$(this).attr('data-child');
+									//console.log(fourthchild_id);
+									$(fourthchild_id).remove();
+								});
+								$(thirdchild_id).remove();
+							});
+							$(secondchild_id).remove();
+								
+							});
+							$(homechild_id).remove();
+					});	
+					$(splitchild).remove();
+                $('#repeat_' + tierid + ' .split_radio_button').removeAttr('disabled');
+                $(this).parent().parent().parent().children("input:first").toggleClass("radiobuttons");
+
+            }
+        }
+    });
+
+});
+//split label click show child tier
+$(document).on("click", ".form-check-label-split", function() {
+		if($(this).children('.split_radio_button').is(':checked')) { alert("it's checked");
+    $('.repeat-class').hide();
+    $('#repeat_0').show();
+    if ($(this).children().attr('data-tierchild')) {
+        //console.log($(this).children().attr('data-tierchild'));
+        var parent = $($(this).children().attr('data-tierchild')).attr('data-tierparent');
+        var child = $(this).attr('data-child');
+        if (parent) {
+            $(parent).show();
+        }
+        //console.log($(this).children().attr('data-tier_parent'));
+        $($(this).children().attr('data-tier_parent')).show();
+        $($(this).children().attr('data-tierchild')).show();
+		
+        if (parent) {
+            $($(parent).attr('data-tierparent')).show();
+            if ($($(parent).attr('data-tierparent')).attr('data-tierparent')) {
+                var firstparent = $($(parent).attr('data-tierparent')).attr('data-tierparent');
+                $(firstparent).show();
+				
+            }
+        }
+		
+    }
+	 }else{alert('dfdf');}
+});
+$(document).keypress(
+  function(event){
+    if (event.which == '13') {
+      event.preventDefault();
+    }
+});
 </script>
 
 <link rel="stylesheet" href="https://rawgit.com/jonthornton/jquery-timepicker/master/jquery.timepicker.css">
@@ -378,7 +527,7 @@
       <div class="col-md-12">
          <div class="box">
          <div class="box-body">
-		 <form method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data" id="company-form">
+     <form  onsubmit="return false;" method="POST" action="{{ route('company.store') }}" enctype="multipart/form-data" id="company-form">
                                  {{csrf_field()}}
          @if(Session::has('success_msg'))
          <div class="alert alert-success">{{ Session::get('success_msg') }}</div>
@@ -422,7 +571,7 @@
                      <div class="col-md-9 col-xs-12">
                         <div class="tab-content" id="v-pills-tabContent">
                            <div class="tab-pane fade active show" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
-						   <div class="col-8 col-xs-12">
+               <div class="col-8 col-xs-12">
                               <div class="text-center">
                                  <h3>Add Company</h3>
                               </div>
@@ -748,14 +897,14 @@
                         <div ng-controller="MyController" ng-init="name = 'block'" id="MyController">
                                  <div class=" menu_button-group">
                            <div class="row text-center flex-nowrap">
-                            <div class="col-sm-4 ng-scope repeat-class" id="repeat_0" ng-set-focus="repeat_0" style="border-right: 2px solid #eee;
-    margin-right: 10px;">
+                            <div class="col-sm-4 ng-scope repeat-class" id="repeat_0" ng-set-focus="repeat_0">
                               
                                     <h3 id="h3_repeat_0">Home</h3>
                               
                                 
                                <input type="hidden" name="<?php echo '{{ getTierLabel(0) }}';?>" id="hidden_repeat_0" value="">
-                               <h5 id="tierlabel_repeat_0"></h5>
+                               <input type="hidden" value="0" name="block[0][tier_number]">
+							   <h5 id="tierlabel_repeat_0"></h5>
                                <br/>
                               <?php 
                               foreach($menu_keys as $menu_items=>$menu_item){ ?>
@@ -787,15 +936,15 @@
                                    <div class="form-check">
                                    
                                      @if($meta_value->slug=='dial_number')
-										  <label class="form-check-label">
+                      <label class="form-check-label">
                                         <input type="radio"  value="dial_number"  class="form-check-input rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName(0,'.$menu_item->id.') }}';?>"  checked><?php echo $meta_value->name; ?></label>
                                      @elseif($meta_value->slug=='split')
-									  <label class="form-check-label form-check-label-split">
+                    <label class="form-check-label form-check-label-split">
                                           <input type="radio" value="split" class="form-check-input menu_meta_split split_radio_button rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName(0,'.$menu_item->id.') }}';?>" id="block[0][{{$menu_item->id}}]" data="0" databutton="{{$menu_item->name}}" ng-click="clickEvent($event);" data-href="{{ route('menu_template') }}" data-parent="{{$menu_item->name}}" data-parentmenuid="<?php echo '0_'.$menu_item->slug;?>"><?php echo $meta_value->name; ?>
-										  </label>
-										  <input type="hidden" class="tierchild" name="<?php echo '{{ getSubSplitName(0,'.$menu_item->id.') }}';?>" value="" data-child="" data-tierchild="" >
+                      </label>
+                      <input type="hidden" class="tierchild" name="<?php echo '{{ getSubSplitName(0,'.$menu_item->id.') }}';?>" value="" data-child="" data-tierchild="" >
                                      @else
-										  <label class="form-check-label">
+                      <label class="form-check-label">
                                      <input type="radio"   id="<?php echo '{{ getMenuSpanishClass(0,'.$menu_item->id.') }}';?>" value="spanish" class="form-check-input rd menu_{{ $menu_item->id }}" name="<?php echo '{{ getSubMenuName(0,'.$menu_item->id.') }}';?>"><?php echo $meta_value->name; ?>
                                           </label>
                                      @endif
@@ -828,7 +977,7 @@
             </div>
          </div>
       </div>
-	  </form>
+    </form>
    </div>
 </div>
  </div>
